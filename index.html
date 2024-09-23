@@ -108,7 +108,7 @@
         function sendAddressToBackend(addressData) {
             console.log(addressData);
 
-            fetch('http://localhost:3000/api/v1/users/create-user', {
+            fetch('https://voting-ca7i.vercel.app/api/v1/users/create-user', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

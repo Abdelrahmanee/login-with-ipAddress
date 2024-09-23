@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting App with Nominatim</title>
+</head>
+
+<body>
+    <h1>Vote Now</h1>
+
+    <form id="voteForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" placeholder="Enter your name" required><br><br>
+
+        <label for="phone">Phone:</label>
+        <input type="text" id="phone" placeholder="Enter your phone number" required><br><br>
+
+        <button type="button" id="submitBtn" onclick="getLocation()">Submit Vote</button>
+    </form>
+
+    <script>
+        const submitBtn = document.getElementById('submitBtn');
+
+        function getLocation() {
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+
+            // Check if name and phone are filled
+            if (!name || !phone) {
+                alert("Please enter your name and phone number.");
+                return;
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => showPosition(position, name, phone), 
+                    showError
+                );
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function showPosition(position, name, phone) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            console.log('Latitude:', latitude);
+            console.log('Longitude:', longitude);
+
+            // Use Nominatim instead of Google Maps API
+            getAddressFromCoordinates(latitude, longitude, name, phone);
+        }
+
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("You must allow geolocation to vote.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred.");
+                    break;
+            }
+        }
+
+        // Convert coordinates to address using OpenStreetMap Nominatim API
+        function getAddressFromCoordinates(lat, lng, name, phone) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const address = data.display_name;
+                    const components = address.split(',').map(component => component.trim());
+
+                    // Assuming the format is consistent:
+                    const street = components[0];
+                    const city = components[1];
+                    const state = components[2];
+                    const postalCode = components[3];
+                    const country = components[4];
+
+                    // Step 3: Send the data to the backend
+                    sendAddressToBackend({
+                        name: name,
+                        phone: phone,
+                        // ipAddress: '', // IP address (from server)
+                        address: {
+                            street,
+                            city,
+                            state,
+                            postalCode,
+                            country
+                        }
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function sendAddressToBackend(addressData) {
+            console.log(addressData);
+
+            fetch('https://voting-ca7i.vercel.app/api/v1/users/create-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(addressData),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+                    alert("Vote submitted successfully!");
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("An error occurred while submitting your vote.");
+                });
+        }
+    </script>
+</body>
+
+</html>
